@@ -8,7 +8,6 @@ class ClientData:
         except:
             print("User name or password does not match MCE_Clients Database")
 
-
     def client_tables(self):
         commands = """
         CREATE TABLE Clients ( ClientID SERIAL PRIMARY KEY, ClientName VARCHAR(255), Address1 VARCHAR (255), Address2 VARCHAR (255),
@@ -32,11 +31,11 @@ class Clients:
 class Invoice:
 
     def __init__(self, invoice_number, client, date):
+        self.invoice_amount = 0
         self.invoice_number = invoice_number
         self.date = date
 
-    @staticmethod
-    def invoice_detail():
+    def invoice_detail(self):
         item_list = {}
         amount_list = []
         while True:
@@ -44,24 +43,22 @@ class Invoice:
             if line_number == '' or line_number == 'Done'.lower():
                 break
             else:
-                hours = input("Enter hours: ")
-                rate = input("Enter rate: ")
+                hours = float(input("Enter hours: "))
+                rate = float(input("Enter rate: "))
                 work_description = input("Work description: ")
-                amount = float(hours) * float(rate)
+                amount = hours * rate
                 amount_list.append(amount)
                 item_list[line_number] = [
                     {"Description": work_description, "Rate": rate, "Hours": hours, "line_amount": amount}]
-        return item_list
-
-            
-
-
-    # @staticmethod
-    # def work_description():
-    #     description = input("Enter Work Description: ")
-    #     return description
+        for x in amount_list:
+            self.invoice_amount += x
 
 
 class CreateInvoice(Invoice):
     pass
+
+
+test = Invoice("0001", "PBG", "01/01/2020")
+test.invoice_detail()
+print(test.invoice_amount)
 
