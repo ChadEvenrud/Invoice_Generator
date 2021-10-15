@@ -1,4 +1,6 @@
 import psycopg2 as sql
+from fpdf import FPDF
+
 
 # Connects to the PostgreSQL database.  The class will also add Tables for the application.
 class ClientData:
@@ -7,14 +9,32 @@ class ClientData:
             self.con = sql.connect(f"dbname=MCE_Clients user={username} password={password}")
         except:
             print("User name or password does not match MCE_Clients Database")
+        self.cursor = self.con.cursor()
 
     def client_tables(self):
-        commands = """
-        CREATE TABLE IF NOT EXISTS Clients ( ClientID SERIAL PRIMARY KEY, ClientName VARCHAR(255), Address1 VARCHAR (255), Address2 VARCHAR (255),
-            City VARCHAR (200), State VARCHAR (2), ZIP VARCHAR (20))          
-        """
-        self.cursor = self.con.cursor()
-        self.cursor.execute(commands)
+        commands = ("""
+                    CREATE TABLE IF NOT EXISTS Clients ( Client_ID INT PRIMARY KEY, Client_Name VARCHAR(255), 
+                    Address1 VARCHAR (255), Address2 VARCHAR (255), City VARCHAR (200), State VARCHAR (2), 
+                    ZIP VARCHAR (20))          
+                    """
+                    ,
+                    """
+                    CREATE TABLE IF NOT EXISTS Invoice (Record_ID SERIAL Primary Key, Invoice_Number VARCHAR (50), 
+                    Invoice_Date DATE,  Client_ID INTEGER , Received BIT)
+                    """
+                    ,
+                    """
+                    CREATE TABLE IF NOT EXISTS Invoice_Detail (Invoice_ID SMALLINT ,  Line_Number SMALLINT, 
+                    Hours SMALLINT, Rate SMALLINT, Amount NUMERIC, Work_Description TEXT) 
+                    """
+                    ,
+                    """
+                    CREATE TABLE IF NOT EXISTS Contacts ( Contact_ID SERIAL PRIMARY KEY, Client_ID SMALLINT , 
+                    First_Name VARCHAR (200) , Last_Name VARCHAR(200), Email VARCHAR (200), Phone varchar (25))   
+                    """)
+
+        for x in commands:
+            self.cursor.execute(x)
         self.con.commit()
         self.cursor.close()
         self.con.close()
@@ -31,6 +51,8 @@ class Clients:
     def client_contact(self, contact_name, contact_email, contact_phone):
         pass
 
+
+# Creates an invoice record and invoice detail.
 
 class Invoice:
 
@@ -61,13 +83,26 @@ class Invoice:
             print(x[0], x[1][0]["Description"], x[1][0]["Rate"], x[1][0]["Hours"], x[1][0]["line_amount"])
 
 
-class CreateInvoice(Invoice):
-    pass
+class CreateInvoice:
+    pdf = FPDF('p', 'in', 'Letter')
+    pdf.add_page()
+
+    #Creat PDF Header
+    pdf.set_font ('times', 'B', 20)
+
+    pdf.cell(8, 1, 'Invoice')
+
+    #Output
+    pdf.output("Invoice.pdf")
 
 
-test = ClientData("chad_evenrud", "Waterpolo1!")
-test.client_tables()
 
-# test = Invoice("0001", "PBG", "01/01/2020")
+pdf_test = CreateInvoice()
+
+#
+# test = ClientData("chad_evenrud", "Waterpolo1!")
+# test.client_tables()
+#
+# # test = Invoice("0001", "PBG", "01/01/2020")
 # test.invoice_detail()
 # print(test.invoice_amount)
