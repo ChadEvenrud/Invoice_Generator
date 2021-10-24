@@ -1,5 +1,6 @@
 import psycopg2 as sql
 from fpdf import FPDF
+import sys
 
 user_name = "chad_evenrud"
 pw = "Waterpolo1!"
@@ -16,14 +17,15 @@ class ClientData:
 
     def create_tables(self):
         commands = ("""
-                    CREATE TABLE IF NOT EXISTS Clients ( Client_ID INT PRIMARY KEY, Client_Name VARCHAR (255)
+                    CREATE TABLE IF NOT EXISTS Clients ( Client_ID SERIAL PRIMARY KEY, Client_Name VARCHAR (255)
                      NOT  NULL, Address1 VARCHAR (255) NULL, Address2 VARCHAR (255) NULL , City VARCHAR (200) NULL ,
                       State VARCHAR (2)  NULL, ZIP VARCHAR (20) NULL)          
                     """
                     ,
                     """
-                    CREATE TABLE IF NOT EXISTS Invoice (Record_ID SERIAL PRIMARY KEY, Invoice_Number VARCHAR (50) 
-                    NOT NULL , Invoice_Date DATE NOT NULL,  Client_ID INTEGER NOT NULL, Received BIT NOT NULL)
+                    CREATE TABLE IF NOT EXISTS Invoice (Record_ID SERIAL PRIMARY KEY, Invoice_Number INT DEFAULT 000001,
+                     Invoice_Date DATE NOT NULL, 
+                     Client_ID INTEGER NOT NULL, Received BIT NOT NULL)
                     """
                     ,
                     """
@@ -33,7 +35,7 @@ class ClientData:
                     """
                     ,
                     """
-                    CREATE TABLE IF NOT EXISTS Contacts ( Contact_ID SERIAL PRIMARY KEY, Client_ID SMALLINT NOT NULL, 
+                    CREATE TABLE IF NOT EXISTS Contacts ( Contact_ID  SERIAL PRIMARY KEY , Client_ID SMALLINT NOT NULL, 
                     First_Name VARCHAR (200) NOT NULL, Last_Name VARCHAR(200) NOT NULL, Email VARCHAR (200), 
                     Phone varchar (25))   
                     """)
@@ -48,19 +50,20 @@ class ClientData:
 # Adds new Client Records to the database
 class Clients(ClientData):
 
-    def client_table(self):
-        client_records = []
-        command = "SELECT * FROM clients"
-        table_data = self.cursor.execute(command)
-        review_data = self.cursor.fetchall()
-        for x in review_data:
-            client_records.append(x)
-        return client_records
+    def __init__(self):
+        super().__init__(user_name, pw)
+        self.client_records = []
+        self.command = "SELECT client_id, client_name FROM clients"
+        self.table_data = self.cursor.execute(self.command)
+        self.review_data = self.cursor.fetchall()
+        for x in self.review_data:
+            self.client_records.append(x)
 
+    # Creates a new client record in the data tables
     def new_client(self):
         insert = "INSERT INTO clients(client_name, address1, address2, city, state, zip)"
         client_name = input("Enter Client Name: ")
-        address = input("Address")
+        address = input("Address: ")
         city = input("Enter City: ")
         state = input("Enter State: ")
         zip = input("Enter Zip: ")
@@ -72,29 +75,76 @@ class Clients(ClientData):
         self.cursor.execute(command)
         self.con.commit()
 
-    def client_contact(self, contact_name, contact_email, contact_phone):
-        pass
+#Adds a new contact to the database.
+    def add_contact(self):
+        print("List of current Clients and Client ID Numbers {}".format(self.client_records))
+        current_client = 0
+        client_name = input("Client Name: ")
+
+# Looks to see if the client exist in the database.
+        for x in self.client_records:
+            if client_name in x:
+                current_client +=1
+        if current_client == 0:
+            print("The Client does not exist.")
+            if input("Do you want to add a new client contact?: (y/n) ").lower() == 'y':
+                self.new_client()
+                command = "SELECT client_id, client_name FROM clients"
+                table_data = self.cursor.execute(command)
+                self.updated_client_data = self.cursor.fetchall()
+                print(self.updated_client_data)
+            else:
+                print("Can't add new contact without a current company record.")
+                sys.exit()
+        updated_clients = []
+
+#Adds the client contact to the database.
+        for x in self.updated_client_data:
+            updated_clients.append(x)
+        contact_first_name = input("Contact First Name: ")
+        contact_last_name = input("Contact Second Name: ")
+        email = input("Email Address: ")
+        phone = input("Enter Phone: ")
+        client_id = ''
+        for x in updated_clients:
+            if client_name in x:
+                client_id = x[0]
+                insert_command = "INSERT INTO contacts(client_id, first_name, last_name, email, phone)"
+                values = (client_id, contact_first_name, contact_last_name, email, phone)
+                self.cursor.execute(f"""
+                                        {insert_command}
+                                        Values{values}
+                                            """)
+                self.con.commit()
 
 
-# Creates an invoice record and invoice detail.
 
 class Invoice(ClientData):
 
-    def __init__(self, invoice_number, client, date):
-        self.invoice_amount = 0
-        self.client = client
-        self.invoice_number = invoice_number
-        self.date = date
+    def invoice_record(self, client, date):
+        client = client
+        date = date
+        invoice_table_command = "SELECT MAX(invoice_number) FROM invoice"
+        self.cursor.execute(invoice_table_command)
+        last_invoice = self.cursor.fetchall()
+        client_table_command = "SELECT client_id, client_name FROM clients"
+        self.cursor.execute(client_table_command)
+        data = self.cursor.fetachall()
+        current_clients = []
+        for x in data:
+            current_clients.append(x)
+        return current_clients
 
     # Collects the invoice detail record line items.
 
     def invoice_detail(self):
         item_list = {}
         amount_list = []
+        line_count = 1
 
         while True:
-            line_number = input("Enter Line Number: ")
-            if line_number == '' or line_number == 'Done'.lower():
+            line_number = input("Enter Invoice Line (1 = Yes, 2 =No/Done): ")
+            if line_number == 2 or line_number == "":
                 break
             else:
                 hours = float(input("Enter hours: "))
@@ -102,8 +152,10 @@ class Invoice(ClientData):
                 work_description = input("Work description: ")
                 amount = hours * rate
                 amount_list.append(amount)
-                item_list[line_number] = [
+                item_list[line_count] = [
                     {"Description": work_description, "Rate": rate, "Hours": hours, "line_amount": amount}]
+                line_count += 1
+        print(item_list)
         for x in amount_list:
             self.invoice_amount += x
         for x in item_list.items():
@@ -143,16 +195,6 @@ class CreateInvoice(FPDF):
         self.cell(0, .5, 'Pg', align="C")
 
 
-# # pdf = CreateInvoice('P','in', 'Letter')
-# # pdf.body()
-# # pdf.output('Invoice.pdf')
-#
-# #
+test = Clients()
+test.add_contact()
 
-clientsql = Clients(user_name, pw)
-print(clientsql.new_client())
-
-#
-# test = Invoice("0001", "PBG", "01/01/2020")
-# test.invoice_detail()
-# print(test.invoice_amount)
