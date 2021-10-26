@@ -75,48 +75,50 @@ class Clients(ClientData):
         self.cursor.execute(command)
         self.con.commit()
 
-#Adds a new contact to the database.
+    # Adds a new contact to the database.
     def add_contact(self):
-        print("List of current Clients and Client ID Numbers {}".format(self.client_records))
-        current_client = 0
-        client_name = input("Client Name: ")
 
-# Looks to see if the client exist in the database.
+        insert_command = "INSERT INTO contacts(client_id, first_name, last_name, email, phone)"
+        client_list = 0
+        print("List of current Clients and Client ID Numbers {}".format(self.client_records))
+        company_name = input("Enter Company Name: ")
+        first_name = input("Enter Contacts First Name: ")
+        last_name = input("Enter Contacts Last Name: ")
+        email = input("Enter email: ")
+        phone = input("Enter phone: ")
+
+    #Looks to make sure there is a client record in the database.  If there is it will create the contact record.
         for x in self.client_records:
-            if client_name in x:
-                current_client +=1
-        if current_client == 0:
-            print("The Client does not exist.")
-            if input("Do you want to add a new client contact?: (y/n) ").lower() == 'y':
+            if company_name in x:
+                client_list += 1
+        if client_list > 0:
+            client_id = x[0]
+            values = (client_id, first_name, last_name, email, phone)
+            self.cursor.execute(f"""
+                                     {insert_command}
+                                     Values{values}
+                                                     """)
+            self.con.commit()
+        else:
+            add_new_client = input(
+                "This company does not exist in the database. \n Do you want to add a new client contact?: (y/n) ").lower()
+            if add_new_client == 'y':
                 self.new_client()
                 command = "SELECT client_id, client_name FROM clients"
                 table_data = self.cursor.execute(command)
-                self.updated_client_data = self.cursor.fetchall()
-                print(self.updated_client_data)
+                updated_client_data = self.cursor.fetchall()
+                for x in updated_client_data:
+                    if company_name in x:
+                        client_id = x[0]
+                        values = (client_id, first_name, last_name, email, phone)
+                        self.cursor.execute(f"""
+                                                    {insert_command}
+                                                    Values{values}
+                                                                  """)
+                        self.con.commit()
             else:
                 print("Can't add new contact without a current company record.")
                 sys.exit()
-        updated_clients = []
-
-#Adds the client contact to the database.
-        for x in self.updated_client_data:
-            updated_clients.append(x)
-        contact_first_name = input("Contact First Name: ")
-        contact_last_name = input("Contact Second Name: ")
-        email = input("Email Address: ")
-        phone = input("Enter Phone: ")
-        client_id = ''
-        for x in updated_clients:
-            if client_name in x:
-                client_id = x[0]
-                insert_command = "INSERT INTO contacts(client_id, first_name, last_name, email, phone)"
-                values = (client_id, contact_first_name, contact_last_name, email, phone)
-                self.cursor.execute(f"""
-                                        {insert_command}
-                                        Values{values}
-                                            """)
-                self.con.commit()
-
 
 
 class Invoice(ClientData):
@@ -197,4 +199,3 @@ class CreateInvoice(FPDF):
 
 test = Clients()
 test.add_contact()
-
