@@ -25,7 +25,7 @@ class ClientData:
                     """
                     CREATE TABLE IF NOT EXISTS Invoice (Record_ID SERIAL PRIMARY KEY, Invoice_Number INT DEFAULT 000001,
                      Invoice_Date DATE NOT NULL, 
-                     Client_ID INTEGER NOT NULL, Received BIT NOT NULL)
+                     Client_ID INTEGER NOT NULL, Received BOOL NOT NULL)
                     """
                     ,
                     """
@@ -87,7 +87,7 @@ class Clients(ClientData):
         email = input("Enter email: ")
         phone = input("Enter phone: ")
 
-    #Looks to make sure there is a client record in the database.  If there is it will create the contact record.
+        # Looks to make sure there is a client record in the database.  If there is it will create the contact record.
         for x in self.client_records:
             if company_name in x:
                 client_list += 1
@@ -121,25 +121,65 @@ class Clients(ClientData):
                 sys.exit()
 
 
-class Invoice(ClientData):
+class Invoice(Clients):
+    def __init__(self):
+        super().__init__()
+        client_db_command = self.cursor.execute("SELECT client_id, client_name FROM clients")
+        client_db_data = self.cursor.fetchall()
+        current_client = []
+        client_counter = 0
+        for x in client_db_data:
+            current_client.append(x)
+        print("List Of Current Client Number nad Clients.{}".format(current_client))
+        client_name = input("Enter Client Name: ")
+        for x in current_client:
+            if client_name in x:
+                client_counter += 1
+        if client_counter > 0:
+            pass
+        else:
+            print("Client does not exist")
+            new_record = input("Do you want to create a new Client?(y/n): ").lower()
+            if new_record == 'y':
+                self.new_client()
+            else:
+                print("Can't continue to enter an invoice.")
+                sys.exit()
+        invoice_date = input("Enter invoice date: ")
+        invoice_data_command = self.cursor.execute("SELECT MAX(invoice_number) as RecentInvoice FROM invoice")
+        invoice_data_db = self.cursor.fetchall()
+        invoice_number = 0
+        if invoice_data_db[0][0] == None:
+            invoice_number = 100001
+        else:
+            invoice_number = invoice_data_db[0][0] + 1
+        print("Invoice Number: " , invoice_number)
+        client_id_data = self.cursor.execute(f"SELECT client_id FROM clients WHERE client_name = '{client_name}'")
+        client_id = self.cursor.fetchall()[0][0]
+        print("Client_ID: " , client_id)
+        insert_command = "INSERT INTO invoice(client_id, invoice_date, invoice_number, received)"
+        value = (client_id , invoice_date , invoice_number, False)
+        self.cursor.execute(f"""
+                                             {insert_command}
+                                             Values{value}
+                                                             """)
+        self.con.commit()
 
-    def invoice_record(self, client, date):
-        client = client
-        date = date
-        invoice_table_command = "SELECT MAX(invoice_number) FROM invoice"
-        self.cursor.execute(invoice_table_command)
-        last_invoice = self.cursor.fetchall()
-        client_table_command = "SELECT client_id, client_name FROM clients"
-        self.cursor.execute(client_table_command)
-        data = self.cursor.fetachall()
-        current_clients = []
-        for x in data:
-            current_clients.append(x)
-        return current_clients
+        # creates the invoice detail
+        self.cursor.execute(f"SELECT Record_ID FROM Invoice WHERE Invoice_Number = {invoice_number} ")
+        invoice_record_number = self.cursor.fetchall()
+        invoice_record_number = invoice_record_number[0][0]
+        print("Invoice Record #: " , invoice_record_number)
 
-    # Collects the invoice detail record line items.
+        line_number = 1
+        hours = input("Enter Hours: ")
+        rate = input("Enter Rate: ")
+        amount = float(hours) * float(rate)
+        work_description = input("Enter work description: ")
 
-    def invoice_detail(self):
+
+
+    def upate_invoice_detail(self):
         item_list = {}
         amount_list = []
         line_count = 1
@@ -196,6 +236,4 @@ class CreateInvoice(FPDF):
         self.set_font('times', 'I', 10)
         self.cell(0, .5, 'Pg', align="C")
 
-
-test = Clients()
-test.add_contact()
+l = Invoice()
