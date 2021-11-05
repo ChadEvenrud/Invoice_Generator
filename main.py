@@ -153,12 +153,12 @@ class Invoice(Clients):
             invoice_number = 100001
         else:
             invoice_number = invoice_data_db[0][0] + 1
-        print("Invoice Number: " , invoice_number)
+        print("Invoice Number: ", invoice_number)
         client_id_data = self.cursor.execute(f"SELECT client_id FROM clients WHERE client_name = '{client_name}'")
         client_id = self.cursor.fetchall()[0][0]
-        print("Client_ID: " , client_id)
+        print("Client_ID: ", client_id)
         insert_command = "INSERT INTO invoice(client_id, invoice_date, invoice_number, received)"
-        value = (client_id , invoice_date , invoice_number, False)
+        value = (client_id, invoice_date, invoice_number, False)
         self.cursor.execute(f"""
                                              {insert_command}
                                              Values{value}
@@ -169,14 +169,41 @@ class Invoice(Clients):
         self.cursor.execute(f"SELECT Record_ID FROM Invoice WHERE Invoice_Number = {invoice_number} ")
         invoice_record_number = self.cursor.fetchall()
         invoice_record_number = invoice_record_number[0][0]
-        print("Invoice Record #: " , invoice_record_number)
+        print("Invoice Record #: ", invoice_record_number)
 
-        line_number = 1
+        line_number: int = 1
         hours = input("Enter Hours: ")
         rate = input("Enter Rate: ")
         amount = float(hours) * float(rate)
         work_description = input("Enter work description: ")
 
+        invoice_detail_command = "INSERT INTO invoice_detail(invoice_id, line_number, hours, rate, amount, work_description)"
+        detail_value = (int(invoice_record_number), line_number, int(hours), int(rate), amount, work_description)
+        self.cursor.execute(f"""
+                                {invoice_detail_command}
+                                Values{detail_value}
+                                                        """)
+        self.con.commit()
+
+        while True:
+            u_input = input("Do you want to create a anohter line item? (y/n): ").lower()
+            if u_input == 'n':
+                break
+            else:
+                line_number += 1
+                hours = input("Enter Hours: ")
+                rate = input("Enter Rate: ")
+                amount = float(hours) * float(rate)
+                work_description = input("Enter work description: ")
+
+                invoice_detail_command = "INSERT INTO invoice_detail(invoice_id, line_number, hours, rate, amount, work_description)"
+                detail_value = (
+                int(invoice_record_number), line_number, int(hours), int(rate), amount, work_description)
+                self.cursor.execute(f"""
+                                                {invoice_detail_command}
+                                                Values{detail_value}
+                                                                        """)
+                self.con.commit()
 
 
     def upate_invoice_detail(self):
@@ -235,5 +262,6 @@ class CreateInvoice(FPDF):
         self.set_y(-.5)
         self.set_font('times', 'I', 10)
         self.cell(0, .5, 'Pg', align="C")
+
 
 l = Invoice()
